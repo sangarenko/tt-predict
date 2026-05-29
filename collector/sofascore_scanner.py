@@ -230,8 +230,8 @@ def league_match(sofa_league, db_league):
     # Direct match
     if sl in dl or dl in sl: return 1.0
     # Partial match
-    sl_words = set(re.split(r'[\\-,.\s]+', sl))
-    dl_words = set(re.split(r'[\\-,.\s]+', dl))
+    sl_words = set(re.split(r'[-,.\\s]+', sl))
+    dl_words = set(re.split(r'[-,.\\s]+', dl))
     common = sl_words & dl_words
     if common and len(common) >= min(len(sl_words), len(dl_words)): return 0.8
     return 0.0
