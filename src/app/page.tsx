@@ -28,11 +28,11 @@ import { useTTStore, type Match, type AiBet, type AiProfile } from '@/lib/store'
 // ============================================================
 
 function fmtMoney(v: number): string {
-  return (v >= 0 ? '+' : '') + '€' + v.toFixed(2)
+  return (v >= 0 ? '+' : '') + v.toFixed(0) + '₽'
 }
 
 function fmtMoneyPlain(v: number): string {
-  return '€' + v.toFixed(2)
+  return v.toFixed(0) + '₽'
 }
 
 function fmtPct(v: number): string {
@@ -310,7 +310,7 @@ function OverviewTab() {
                     <div className="text-right shrink-0">
                       <StatusBadge status={bet.status} />
                       <p className={`text-xs mt-1 font-medium tabular-nums ${bet.profit > 0 ? 'text-emerald-400' : bet.profit < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
-                        {bet.profit > 0 ? '+' : ''}€{bet.profit.toFixed(2)}
+                        {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(0)}₽
                       </p>
                     </div>
                   </div>
@@ -578,8 +578,8 @@ function AiBetCard({ bet }: { bet: AiBet }) {
               {bet.profileName}
             </span>
             <span>@ {fmtOdds(bet.odds)}</span>
-            <span>Stake: €{bet.stake.toFixed(2)}</span>
-            <span>Pot: €{bet.potentialWin.toFixed(2)}</span>
+            <span>Ставка: {bet.stake.toFixed(0)}₽</span>
+            <span>Выигрыш: {bet.potentialWin.toFixed(0)}₽</span>
           </div>
           {/* Confidence Bar */}
           <div className="flex items-center gap-2 mt-1.5">
@@ -603,7 +603,7 @@ function AiBetCard({ bet }: { bet: AiBet }) {
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <StatusBadge status={bet.status} />
           <p className={`text-sm font-semibold tabular-nums ${bet.profit > 0 ? 'text-emerald-400' : bet.profit < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
-            {bet.profit > 0 ? '+' : ''}€{bet.profit.toFixed(2)}
+            {bet.profit > 0 ? '+' : ''}{bet.profit.toFixed(0)}₽
           </p>
           <p className="text-xs text-zinc-600">{timeAgo(bet.createdAt)}</p>
         </div>
@@ -803,7 +803,7 @@ function BankrollTab() {
             <ChartContainer config={profileBarConfig} className="h-[250px] w-full">
               <BarChart data={profileChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(63,63,70,0.3)" horizontal={false} />
-                <XAxis type="number" tick={{ fill: '#71717a', fontSize: 11 }} tickFormatter={(v) => `€${v}`} />
+                <XAxis type="number" tick={{ fill: '#71717a', fontSize: 11 }} tickFormatter={(v) => `${v}₽`} />
                 <YAxis type="category" dataKey="name" tick={{ fill: '#a1a1aa', fontSize: 11 }} width={100} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="profit" radius={[0, 4, 4, 0]}>

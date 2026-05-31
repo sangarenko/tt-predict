@@ -191,3 +191,60 @@ The database contained 4462+ fake matches (2465 betboom + 2000 fonbet) generated
    - 0 fake entries remaining
 
 4. **PM2 restarted** to clear application cache
+
+---
+## Date: 2026-05-31 — Phase 6: Backend Rebuild + Currency Change (€→₽)
+
+### Objective
+Rebuild the backend from scratch (Prisma schema, API routes, seed data) and change all currency from EUR (€) to Russian Rubles (₽). Each of the 5 AI profiles starts with 1000₽.
+
+### Actions Taken
+
+#### 1. Prisma Schema Rebuild
+Created comprehensive Prisma schema with all models:
+- **Match** — table tennis matches (source, sport, league, players, scores, status)
+- **BookmakerOdds** — odds from bookmakers (odds1, odds2, totals, handicaps)
+- **AiProfile** — 5 AI betting profiles with bankroll tracking
+- **AiBet** — bets placed by AI profiles (stake, odds, profit, reasoning)
+- **Prediction** — raw predictions from predictors
+- **CollectionLog** — data collection tracking
+- **ValueBet** — value betting calculations
+- **Predictor** — external predictor records
+- **Tipster** — tipster tracking
+
+#### 2. 9 API Routes Created
+| Route | Purpose |
+|-------|---------|
+| `GET /api/matches` | All matches with odds, filtered 48h |
+| `GET /api/ai-bets` | All AI bets with profile names |
+| `GET /api/stats` | Aggregate stats (win rate, profit, counts) |
+| `GET /api/bankroll` | Overall bankroll state |
+| `GET /api/ai-bankroll` | AI bankroll aggregate across profiles |
+| `GET /api/predictors` | All predictors |
+| `GET /api/collection-logs` | Collection log history |
+| `GET /api/ai-profiles` | All AI profiles with derived stats |
+| `GET /api/tipsters` | All tipsters |
+
+#### 3. Currency Change €→₽
+Changed in `src/app/page.tsx`:
+- `fmtMoney()`: `+123₽` format (was `+€123.00`)
+- `fmtMoneyPlain()`: `1000₽` format (was `€1000.00`)
+- All inline € references → ₽
+- Russian labels: "Ставка" (stake), "Выигрыш" (potential win)
+
+#### 4. Seed Data (1000₽ per profile)
+5 AI profiles created:
+| Profile | Strategy | Emoji | Initial |
+|---------|----------|-------|---------|
+| Эло-Мастер | elo | 📊 | 1000₽ |
+| Тренд-Хантер | trend | 🔥 | 1000₽ |
+| Лига-Эксперт | league | 🏆 | 1000₽ |
+| Догонщик | chase | ⚡ | 1000₽ |
+| Арбитражёр | arbitrage | 💰 | 1000₽ |
+
+- 8 sample matches (2 live, 6 upcoming)
+- 10 AI bets (5 profiles × 2 live matches)
+- 3 sample predictors
+
+#### 5. DATABASE_URL Fix
+Fixed path from `file:./db/custom.db` to `file:/home/z/my-project/db/custom.db` in .env to match dev server resolution.
