@@ -28,7 +28,7 @@ async function main() {
         initialAmount: 1000,
         currentAmount: 1000,
         peakAmount: 1000,
-        flatAmount: 50,
+        flatAmount: 20,
         stopLossPct: 30,
         isActive: true,
       },
@@ -41,7 +41,7 @@ async function main() {
         initialAmount: 1000,
         currentAmount: 1000,
         peakAmount: 1000,
-        flatAmount: 50,
+        flatAmount: 20,
         stopLossPct: 30,
         isActive: true,
       },
@@ -54,7 +54,7 @@ async function main() {
         initialAmount: 1000,
         currentAmount: 1000,
         peakAmount: 1000,
-        flatAmount: 50,
+        flatAmount: 20,
         stopLossPct: 30,
         isActive: true,
       },
@@ -67,7 +67,7 @@ async function main() {
         initialAmount: 1000,
         currentAmount: 1000,
         peakAmount: 1000,
-        flatAmount: 50,
+        flatAmount: 20,
         stopLossPct: 30,
         isActive: true,
       },
@@ -80,7 +80,7 @@ async function main() {
         initialAmount: 1000,
         currentAmount: 1000,
         peakAmount: 1000,
-        flatAmount: 50,
+        flatAmount: 20,
         stopLossPct: 30,
         isActive: true,
       },
@@ -173,7 +173,7 @@ async function main() {
         ? (await db.bookmakerOdds.findFirst({ where: { matchId: match.id } }))?.odds1 ?? 1.8
         : (await db.bookmakerOdds.findFirst({ where: { matchId: match.id } }))?.odds2 ?? 1.8
       const confidence = 50 + Math.random() * 35
-      const stake = 50
+      const stake = 20
       const potentialWin = stake * odds
 
       await db.aiBet.create({

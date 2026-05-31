@@ -59,10 +59,16 @@ export async function runPredictions() {
   let totalSkipped = 0
 
   // 4. For each profile and each match, run strategy
+  const MAX_BETS_PER_PROFILE = 5 // Max 5 new bets per profile per run
+  const MAX_BANKROLL_PCT = 0.3  // Max 30% of bankroll at risk
+
   for (const profile of profiles) {
     // Bankroll protection check
     const protection = checkBankrollProtection(profile)
     if (!protection.canBet) continue
+
+    let profileBetCount = 0
+    let profileTotalStaked = 0
 
     for (const match of allUpcoming) {
       // Skip if this profile already has a pending bet on this match
@@ -156,6 +162,12 @@ export async function runPredictions() {
       // Safety: don't bet if stake is invalid or exceeds bankroll
       if (stake <= 0 || stake > profile.currentAmount) continue
 
+      // Limit: max bets per profile per run
+      if (profileBetCount >= MAX_BETS_PER_PROFILE) continue
+
+      // Limit: max total stake per profile (30% of bankroll)
+      if (profileTotalStaked + stake > profile.currentAmount * MAX_BANKROLL_PCT) continue
+
       const potentialWin = Math.round(stake * betOdds)
 
       results.push({
@@ -172,6 +184,8 @@ export async function runPredictions() {
         strategy: profile.strategy,
         reasoning: result.reasoning,
       })
+      profileBetCount++
+      profileTotalStaked += stake
     }
   }
 
