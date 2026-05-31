@@ -304,3 +304,75 @@ POST /api/predict?action=all
 - ✅ GitHub: `sangarenko/tt-predict` (pushed)
 - ✅ Server: 2.26.122.152:81 (Caddy) — rebuilt, running
 - ✅ Database re-seeded on server
+
+---
+
+## Date: 2025-06-01 — Phase 8: Demo Data Audit + Fix
+
+### Objective
+User suspected subagents filled in demo/fake data. Full audit performed.
+
+### Audit Results
+
+#### ✅ VERIFIED REAL:
+1. **5 Strategy algorithms** — All genuine implementations:
+   - `elo.ts`: Real Elo rating (K=32, base=1500), proper expected score formula
+   - `trend.ts`: Real form analysis with streak detection, win rates
+   - `league.ts`: Real league predictability + player dominance
+   - `chase.ts`: Fixed — only bets favorites <1.8, has bankroll reserve check
+   - `arbitrage.ts`: Real margin/vig analysis, normalized probabilities
+2. **Bankroll management** — Real Kelly criterion with fractional sizing
+3. **Predictor orchestrator** — Proper multi-profile pipeline with limits
+4. **Python collectors** — Real BetBoom/1xBet/SofaScore scrapers with Playwright
+
+#### ❌ CONFIRMED FAKE:
+1. **`prisma/seed.ts`** — 8 matches with **random odds** (`Math.random()` on lines 110-111)
+2. **Random bets** — `Math.random() > 0.5` for player selection (line 170)
+3. **Random confidence** — `50 + Math.random() * 35` (line 175)
+4. **Fake predictors** — Made-up accuracy stats
+
+### Fixes Applied
+
+#### 1. Clean Seed (`prisma/seed.ts`)
+- Removed ALL fake matches (8 random matches deleted)
+- Removed ALL fake AI bets (10 random bets deleted)
+- Kept only 5 real AI profiles (1000₽ each)
+- Kept 3 predictor templates (accuracy reset to 0)
+- Clear message: "NO fake matches — run /api/collect to get real data"
+
+#### 2. Match Collection API (`src/app/api/collect/route.ts`)
+- POST endpoint for receiving real matches from external collectors
+- Deduplication by player pair + league
+- Score/status update support
+- Automatic collection logging
+
+#### 3. Collector Trigger API (`src/app/api/collect/trigger/route.ts`)
+- POST endpoint to trigger web scraping + prediction in one call
+- Calls `scrapeLiveMatches()` from collector module
+- Saves matches to DB via upsert logic
+- Auto-runs predictions on new matches
+- Returns { created, updated, predictions }
+
+#### 4. Web Collector Module (`src/lib/collector.ts`)
+- Uses `z-ai-web-dev-sdk` web-search + web-reader
+- Searches for live TT matches from multiple sources
+- Scrapes Flashscore, SofaScore, OddsPortal
+- Parses match data (players, odds, scores)
+- Filters valid matches (reasonable odds, proper implied probabilities)
+- Deduplicates by player pair
+
+#### 5. Dashboard Actions (`src/app/page.tsx`)
+- Added **"Собрать"** button → triggers `/api/collect/trigger`
+- Added **"Предсказать"** button → triggers `/api/predict`
+- Action feedback banner shows results
+- Loading spinners on buttons during operations
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `prisma/seed.ts` | Removed fake matches/bets, clean profiles only |
+| `src/app/api/collect/route.ts` | NEW: POST endpoint for match import |
+| `src/app/api/collect/trigger/route.ts` | NEW: POST trigger for collect+predict |
+| `src/lib/collector.ts` | NEW: Web scraping module |
+| `src/app/page.tsx` | Added action buttons + feedback |
+| `package.json` | Added prisma.seed config |

@@ -8,7 +8,7 @@ import {
   XCircle, AlertTriangle, Eye, BarChart3, ArrowUpRight,
   ArrowDownRight, Minus, Flame, Shield, Timer, CircleDot,
   Loader2, Wallet, Bot, History, LayoutDashboard, UserCircle,
-  ChevronRight, Landmark, Signal
+  ChevronRight, Landmark, Signal, Download, Cpu
 } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Area, AreaChart } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
@@ -891,6 +891,45 @@ function CollectionFooter() {
 export default function Dashboard() {
   const { activeTab, setActiveTab, fetchAll, loading } = useTTStore()
   const [now, setNow] = useState(new Date())
+  const [collecting, setCollecting] = useState(false)
+  const [predicting, setPredicting] = useState(false)
+  const [lastAction, setLastAction] = useState<string>('')
+
+  const handleCollect = async () => {
+    setCollecting(true)
+    setLastAction('')
+    try {
+      const res = await fetch('/api/collect/trigger', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        setLastAction(`Собрано: ${data.created} новых, ${data.updated} обновлено. Предсказаний: ${data.predictions?.betsPlaced ?? 0}`)
+      } else {
+        setLastAction(`Ошибка: ${data.error || 'unknown'}`)
+      }
+      await fetchAll()
+    } catch (e) {
+      setLastAction('Ошибка сети при сборе')
+    }
+    setCollecting(false)
+  }
+
+  const handlePredict = async () => {
+    setPredicting(true)
+    setLastAction('')
+    try {
+      const res = await fetch('/api/predict', { method: 'POST' })
+      const data = await res.json()
+      if (data.betsPlaced !== undefined) {
+        setLastAction(`Предсказаний: ${data.betsPlaced} ставок, ${data.betsSkipped} пропущено`)
+      } else {
+        setLastAction(`Результат: ${JSON.stringify(data)}`)
+      }
+      await fetchAll()
+    } catch (e) {
+      setLastAction('Ошибка сети при предсказании')
+    }
+    setPredicting(false)
+  }
 
   // Force dark theme
   useEffect(() => {
@@ -928,7 +967,29 @@ export default function Dashboard() {
             </div>
 
             {/* Right side */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {/* Action buttons */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 border-zinc-700 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/5 text-xs"
+                onClick={handleCollect}
+                disabled={collecting}
+              >
+                {collecting ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+                <span className="hidden sm:inline">Собрать</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 border-zinc-700 text-zinc-400 hover:text-amber-400 hover:border-amber-500/50 hover:bg-amber-500/5 text-xs"
+                onClick={handlePredict}
+                disabled={predicting}
+              >
+                {predicting ? <Loader2 className="size-3 animate-spin" /> : <Cpu className="size-3" />}
+                <span className="hidden sm:inline">Предсказать</span>
+              </Button>
+              <div className="w-px h-5 bg-zinc-800" />
               {/* Refresh indicator */}
               {loading && (
                 <Loader2 className="size-3.5 text-emerald-400 animate-spin" />
@@ -994,6 +1055,14 @@ export default function Dashboard() {
               <BankrollTab />
             </TabsContent>
           </Tabs>
+        )}
+
+        {/* Action feedback */}
+        {lastAction && (
+          <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5 flex items-center gap-2">
+            <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+            <p className="text-xs text-emerald-300">{lastAction}</p>
+          </div>
         )}
 
         {/* Collection Footer */}
