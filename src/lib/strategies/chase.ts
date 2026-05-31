@@ -1,8 +1,7 @@
 // ========================================
 // Chase Strategy (Smart Martingale)
-// Aggressive recovery-based approach that increases stakes
-// after consecutive losses. Never skips — always bets.
-// Uses simple odds comparison (lower odds = more likely winner).
+// Controlled recovery-based approach. Only bets on clear favorites
+// to avoid burning bankroll on coin flips. Increases stakes after losses.
 // ========================================
 
 import type { StrategyContext, StrategyResult } from './types'
@@ -11,8 +10,24 @@ import type { StrategyContext, StrategyResult } from './types'
 export function chaseStrategy(ctx: StrategyContext): StrategyResult {
   const { match, historicalBets, profile } = ctx
 
+  // Only bet on clear favorites (odds < 1.8) — avoid coin flips
+  const favorite = match.odds1 <= match.odds2 ? match.player1 : match.player2
+  const favOdds = Math.min(match.odds1, match.odds2)
+  const dogOdds = Math.max(match.odds1, match.odds2)
+
+  // Skip if no clear favorite (close odds = coin flip)
+  if (favOdds >= 1.8) {
+    return {
+      predictedWinner: favorite,
+      confidence: 30,
+      valueRating: 0,
+      reasoning: `No clear favorite (${match.odds1.toFixed(2)} vs ${match.odds2.toFixed(2)}) — skipping coin flip`,
+      shouldSkip: true,
+    }
+  }
+
   // Calculate consecutive losses from recent bets
-  const recentBets = historicalBets.slice(0, 10) // Look at last 10 bets
+  const recentBets = historicalBets.slice(0, 10)
   let consecutiveLosses = 0
   for (const bet of recentBets) {
     if (!bet.won) {
@@ -22,65 +37,49 @@ export function chaseStrategy(ctx: StrategyContext): StrategyResult {
     }
   }
 
-  // Simple prediction: lower odds = more likely winner
-  // This is the most basic approach — the chase strategy is about
-  // money management, not sophisticated analysis
-  const predictedWinner = match.odds1 <= match.odds2 ? match.player1 : match.player2
-  const betOdds = match.odds1 <= match.odds2 ? match.odds1 : match.odds2
+  // Confidence = implied probability from odds, clamped to 50-85
+  const impliedProb = favOdds > 0 ? (1 / favOdds) * 100 : 50
+  const confidence = Math.round(Math.min(85, Math.max(50, impliedProb)) * 10) / 10
 
-  // Confidence = implied probability from odds, clamped to 30-75
-  const impliedProb = betOdds > 0 ? (1 / betOdds) * 100 : 50
-  const confidence = Math.round(Math.min(75, Math.max(30, impliedProb)) * 10) / 10
-
-  // Calculate the chase multiplier for display in reasoning
   const baseStake = profile.flatAmount
   const chaseMultiplier = Math.min(1.5 ** consecutiveLosses, 3)
-  const proposedStake = Math.min(
-    Math.round(baseStake * chaseMultiplier),
-    Math.round(profile.currentAmount * 0.1)
-  )
 
-  // Value rating: chase strategy focuses on recovery
-  // Higher value when on a loss streak (recovery is more important)
   let valueRating: number
   let reasoning: string
 
   if (consecutiveLosses >= 3) {
-    // Active chase mode — recovery needed
-    const recoveryTarget = consecutiveLosses * baseStake
     valueRating = Math.min(5, 2 + consecutiveLosses * 0.5)
     reasoning = [
-      `CHASE MODE ACTIVE: ${consecutiveLosses} consecutive losses detected`,
-      `Recovery target: ~${recoveryTarget} units from losing streak`,
-      `Stake multiplied by ${chaseMultiplier.toFixed(2)}x (${baseStake} → ${proposedStake} units)`,
-      `Predicting ${predictedWinner} at ${betOdds} odds (implied ${impliedProb.toFixed(1)}% probability)`,
-      `Current bankroll: ${profile.currentAmount.toFixed(0)} (${(proposedStake / profile.currentAmount * 100).toFixed(1)}% of bankroll at risk)`,
-      'Strategy: Aggressive recovery — increased stake to recover losses faster',
+      `CHASE MODE: ${consecutiveLosses} consecutive losses`,
+      `Stake x${chaseMultiplier.toFixed(1)} (${baseStake}→${Math.round(baseStake * chaseMultiplier)})`,
+      `${favorite} @${favOdds} (implied ${impliedProb.toFixed(0)}%)`,
     ].join('. ')
   } else if (consecutiveLosses >= 1) {
-    // Mild chase — small increase
     valueRating = 1.5
     reasoning = [
-      `Mild chase: ${consecutiveLosses} loss(es) in a row`,
-      `Stake: ${proposedStake} units (${chaseMultiplier.toFixed(2)}x base)`,
-      `Predicting ${predictedWinner} at ${betOdds} odds (implied ${impliedProb.toFixed(1)}%)`,
-      `Monitoring for potential escalation to full chase mode`,
+      `Mild chase: ${consecutiveLosses} loss(es)`,
+      `${favorite} @${favOdds} (implied ${impliedProb.toFixed(0)}%)`,
     ].join('. ')
   } else {
-    // Normal mode — flat bet
-    valueRating = 0.5
+    valueRating = 1.0
     reasoning = [
-      `Normal mode: no active losing streak`,
-      `Flat stake: ${baseStake} units`,
-      `Predicting ${predictedWinner} at ${betOdds} odds (implied ${impliedProb.toFixed(1)}%)`,
-      `Betting on the odds-on favorite — simple probability play`,
+      `Flat mode: ${favorite} @${favOdds} (clear favorite, implied ${impliedProb.toFixed(0)}%)`,
     ].join('. ')
   }
 
-  // Chase strategy NEVER skips — it always bets
-  // (unless bankroll protection stops it, handled upstream)
+  // Don't bet if bankroll < 3x flat stake (keep reserve for chase)
+  if (profile.currentAmount < baseStake * 3) {
+    return {
+      predictedWinner: favorite,
+      confidence,
+      valueRating: 0,
+      reasoning: `Bankroll too low (${profile.currentAmount}₽) — preserving for chase reserve`,
+      shouldSkip: true,
+    }
+  }
+
   return {
-    predictedWinner,
+    predictedWinner: favorite,
     confidence,
     valueRating: Math.round(valueRating * 10) / 10,
     reasoning,
