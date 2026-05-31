@@ -434,3 +434,52 @@ Populate database with realistic TT match data and verify the full prediction �
 - ✅ All 5 strategies working correctly
 - ⏳ Pending: Deploy to server 2.26.122.152:81
 - ⏳ Pending: Integrate 5 GitHub AI projects
+
+---
+
+## Date: 2025-06-01 — Phase 10: Full Server Deploy
+
+### Objective
+Deploy complete project to server 2.26.122.152, seed data, run predictions.
+
+### Deployment Steps
+1. **Git push**: Pushed latest commits to `sangarenko/tt-predict`
+2. **File upload**: Uploaded all files via paramiko/SFTP (src/, prisma/, scripts/, public/, collector/, configs)
+3. **Dependencies**: `bun install` — 915 packages installed
+4. **Prisma**: Generated client + pushed schema (force reset)
+5. **Seeding**: 5 AI profiles via `bun run prisma/seed.ts`, 20 matches via `seed_quick.js`
+6. **PM2**: Started dev server via `pm2 start bun -- run dev`
+7. **Predictions**: 15 bets placed via `/api/predict`
+
+### Server State
+- **Next.js dev**: Running on port 3000 (PM2 process `tt-predict`)
+- **Nginx**: Port 81 has config but connection refused (nginx inside container/slice — can't proxy)
+- **Port 3000**: Directly accessible externally ✅
+- **Systemd service**: `tt-predict.service` enabled as backup for PM2
+- **Database**: 60 matches, 31 bets, 5 profiles (1000₽ each)
+
+### API Verified Working
+- `GET /api/ai-profiles` → 5 profiles ✅
+- `GET /api/stats` → {"totalMatches":60,"totalBets":31} ✅
+- `GET /api/ai-bets` → 31 bets ✅
+- `POST /api/predict` → 15 bets placed ✅
+
+### Port 81 Issue
+Nginx on port 81 is in a docker/container context and can't proxy to localhost:3000.
+Port 3000 is directly accessible from outside. To fix port 81:
+- Option A: Install Caddy (not currently on server)
+- Option B: Configure nginx to run outside container
+- Option C: Use socat for port forwarding
+- **Current workaround**: Use port 3000 directly
+
+### Files on Server (`/var/www/tt-predict/`)
+```
+├── package.json, .env (PORT=3001), next.config.ts
+├── prisma/ (schema.prisma, seed.ts)
+├── src/ (app/, lib/, components/, hooks/)
+├── scripts/ (seed-matches.ts, settle-simulate.ts)
+├── public/ (logo.svg, robots.txt)
+├── collector/ (sofascore_scanner.py, cron/deploy scripts)
+├── seed_quick.js
+└── db/custom.db
+```
