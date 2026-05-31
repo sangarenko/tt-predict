@@ -248,3 +248,59 @@ Changed in `src/app/page.tsx`:
 
 #### 5. DATABASE_URL Fix
 Fixed path from `file:./db/custom.db` to `file:/home/z/my-project/db/custom.db` in .env to match dev server resolution.
+
+---
+
+## Date: 2026-05-31 — Phase 7: AI Prediction Engine + 5 Strategies
+
+### Objective
+Build a real prediction engine with 5 AI strategies, bankroll protection, and settling system. Each strategy independently analyzes matches and places bets.
+
+### Architecture
+```
+POST /api/predict?action=all
+├── settleBets() — resolve finished matches
+└── runPredictions()
+    ├── For each active profile
+    │   ├── checkBankrollProtection() — stop-loss check
+    │   └── For each upcoming match
+    │       ├── Build StrategyContext (history, odds, league)
+    │       ├── Run strategy → StrategyResult
+    │       ├── calculateStake() — Kelly / flat / chase
+    │       └── Create AiBet + update profile bankroll
+    └── Return { betsPlaced, betsSkipped, recommendations }
+```
+
+### 5 Strategies Created
+
+| Strategy | File | Logic |
+|----------|------|-------|
+| **Elo** | `strategies/elo.ts` | Elo rating (K=32, base=1500) from historical matches. Higher-rated = predicted winner. Confidence from Elo gap. Skips if no history. |
+| **Trend** | `strategies/trend.ts` | Last 5 results momentum. 40% recent form + 30% streak + 30% overall WR. Skips if no history. |
+| **League** | `strategies/league.ts` | League predictability + player dominance. Checks win rate per league. Skips if no league data. |
+| **Chase** | `strategies/chase.ts` | Smart Martingale. Flat stake, increases on losses (1.5^consecutive, cap 3x). Never skips. Bets on odds-on favorite. |
+| **Arbitrage** | `strategies/arbitrage.ts` | Implied probability analysis. Detects market inefficiency. Kelly stake sizing. Bets on undervalued side. |
+
+### Bankroll Protection (`lib/bankroll.ts`)
+- **Kelly Criterion**: `f = (bp - q) / b` with 0.25 fractional
+- **Stop-loss**: Pause if drawdown >= stopLossPct (30%)
+- **Stake cap**: Max 10% of bankroll per bet
+- **Strategy-specific sizing**: Chase=Martingale, Arbitrage=Elo=Kelly, others=Flat
+
+### API: `POST /api/predict`
+- `action: "predict"` — run predictions only
+- `action: "settle"` — settle finished bets
+- `action: "all"` — settle + predict
+
+### First Run Results
+- **51 bets placed** across 3 profiles
+- 📊 Эло-Мастер: 0 (no history → skip)
+- 🔥 Тренд-Хантер: 0 (no history → skip)
+- 🏆 Лига-Эксперт: 15 bets, 250₽ remaining
+- ⚡ Догонщик: 20 bets, 0₽ (full bankroll deployed)
+- 💰 Арбитражёр: 16 bets, 895₽ (Kelly small stakes)
+
+### Deployment
+- ✅ GitHub: `sangarenko/tt-predict` (pushed)
+- ✅ Server: 2.26.122.152:81 (Caddy) — rebuilt, running
+- ✅ Database re-seeded on server
